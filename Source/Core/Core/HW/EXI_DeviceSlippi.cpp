@@ -3041,11 +3041,25 @@ void CEXISlippi::handleConnectionCleanup()
 	ERROR_LOG(SLIPPI_ONLINE, "Connection cleanup started...");
 
 	// In rotation mode, keep the connection alive between games.
-	// Keep character selections so the next game starts automatically.
+	// Players return to CSS to re-pick characters and stage.
 	if (isRotationMode() && rotationState.gamesPlayed > 0)
 	{
-		// Reset stage so a new random stage is picked, but keep character selected
-		localSelections.isStageSelected = false;
+		// Reset local selections so player must re-pick character and stage
+		localSelections.Reset();
+
+		// Reset remote player selections so we wait for them to re-pick too
+		if (slippi_netplay)
+		{
+			auto matchInfo = slippi_netplay->GetMatchInfo();
+			if (matchInfo)
+			{
+				for (int i = 0; i < SLIPPI_REMOTE_PLAYER_MAX; i++)
+				{
+					matchInfo->remotePlayerSelections[i].isCharacterSelected = false;
+					matchInfo->remotePlayerSelections[i].isStageSelected = false;
+				}
+			}
+		}
 
 		// Reset stage pool so a new random stage is picked
 		stagePool.clear();
@@ -3053,7 +3067,7 @@ void CEXISlippi::handleConnectionCleanup()
 		// Reset any selection overwrites
 		overwrite_selections.clear();
 
-		ERROR_LOG(SLIPPI_ONLINE, "Rotation: keeping connection alive, preserving character selections");
+		ERROR_LOG(SLIPPI_ONLINE, "Rotation: keeping connection alive, resetting selections for next game");
 		return;
 	}
 
