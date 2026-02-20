@@ -2065,6 +2065,19 @@ void CEXISlippi::prepareOnlineMatchState()
 	u8 localPlayerReady = localSelections.isCharacterSelected;
 	u8 remotePlayersReady = 0;
 
+	if (isRotationMode())
+	{
+		static int logThrottle = 0;
+		if (logThrottle++ % 60 == 0) // Log once per second
+		{
+			ERROR_LOG(SLIPPI_ONLINE, "[ROTATION] prepareOnlineMatchState: localReady=%d, mmState=%d, "
+			          "localCharSel=%d, localStageSel=%d, gamesPlayed=%d",
+			          localPlayerReady, (int)mmState,
+			          localSelections.isCharacterSelected, localSelections.isStageSelected,
+			          rotationState.gamesPlayed);
+		}
+	}
+
 	auto userInfo = user->GetUserInfo();
 	u16 alt_stage_mode = 0;
 
@@ -2123,6 +2136,20 @@ void CEXISlippi::prepareOnlineMatchState()
 				if (!matchInfo->remotePlayerSelections[i].isCharacterSelected)
 				{
 					remotePlayersReady = 0;
+				}
+			}
+
+			if (isRotationMode())
+			{
+				static int logThrottle2 = 0;
+				if (logThrottle2++ % 60 == 0)
+				{
+					ERROR_LOG(SLIPPI_ONLINE, "[ROTATION] remoteReady=%d, remoteCount=%d, "
+					          "r0char=%d r1char=%d r2char=%d",
+					          remotePlayersReady, remotePlayerCount,
+					          matchInfo->remotePlayerSelections[0].isCharacterSelected,
+					          matchInfo->remotePlayerSelections[1].isCharacterSelected,
+					          matchInfo->remotePlayerSelections[2].isCharacterSelected);
 				}
 			}
 
