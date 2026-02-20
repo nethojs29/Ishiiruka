@@ -2070,11 +2070,11 @@ void CEXISlippi::prepareOnlineMatchState()
 		static int logThrottle = 0;
 		if (logThrottle++ % 60 == 0) // Log once per second
 		{
-			ERROR_LOG(SLIPPI_ONLINE, "[ROTATION] prepareOnlineMatchState: localReady=%d, mmState=%d, "
-			          "localCharSel=%d, localStageSel=%d, gamesPlayed=%d",
-			          localPlayerReady, (int)mmState,
-			          localSelections.isCharacterSelected, localSelections.isStageSelected,
-			          rotationState.gamesPlayed);
+			fprintf(stderr, "[ROTATION] prepareMatchState: localReady=%d, mmState=%d, "
+			        "localCharSel=%d, localStageSel=%d, gamesPlayed=%d\n",
+			        localPlayerReady, (int)mmState,
+			        localSelections.isCharacterSelected, localSelections.isStageSelected,
+			        rotationState.gamesPlayed);
 		}
 	}
 
@@ -2144,12 +2144,12 @@ void CEXISlippi::prepareOnlineMatchState()
 				static int logThrottle2 = 0;
 				if (logThrottle2++ % 60 == 0)
 				{
-					ERROR_LOG(SLIPPI_ONLINE, "[ROTATION] remoteReady=%d, remoteCount=%d, "
-					          "r0char=%d r1char=%d r2char=%d",
-					          remotePlayersReady, remotePlayerCount,
-					          matchInfo->remotePlayerSelections[0].isCharacterSelected,
-					          matchInfo->remotePlayerSelections[1].isCharacterSelected,
-					          matchInfo->remotePlayerSelections[2].isCharacterSelected);
+					fprintf(stderr, "[ROTATION] remoteReady=%d, remoteCount=%d, "
+					        "r0char=%d r1char=%d r2char=%d\n",
+					        remotePlayersReady, remotePlayerCount,
+					        matchInfo->remotePlayerSelections[0].isCharacterSelected,
+					        matchInfo->remotePlayerSelections[1].isCharacterSelected,
+					        matchInfo->remotePlayerSelections[2].isCharacterSelected);
 				}
 			}
 
@@ -2271,8 +2271,8 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	if (localPlayerReady && remotePlayersReady)
 	{
-		INFO_LOG(SLIPPI_ONLINE, "Match prep: lastSearch.mode=%d, isRotation=%d",
-		         (int)lastSearch.mode, isRotationMode() ? 1 : 0);
+		fprintf(stderr, "[ROTATION] Match prep: lastSearch.mode=%d, isRotation=%d\n",
+		        (int)lastSearch.mode, isRotationMode() ? 1 : 0);
 		auto isDecider = slippi_netplay->IsDecider();
 		u8 remotePlayerCount = matchmaking->RemotePlayerCount();
 		auto matchInfo = slippi_netplay->GetMatchInfo();
@@ -2479,10 +2479,10 @@ void CEXISlippi::prepareOnlineMatchState()
 
 			rotationGameActive = true;
 
-			INFO_LOG(SLIPPI_ONLINE, "Rotation: active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d",
-			         rotationState.activePlayers[0], rotationState.activePlayers[1],
-			         rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
-			         rotationState.gamesPlayed);
+			fprintf(stderr, "[ROTATION] active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d\n",
+			        rotationState.activePlayers[0], rotationState.activePlayers[1],
+			        rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
+			        rotationState.gamesPlayed);
 		}
 		else if (remotePlayerCount <= 2)
 		{
@@ -2570,15 +2570,15 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	if (isRotationMode())
 	{
-		INFO_LOG(SLIPPI_ONLINE, "Rotation final match block - stocks: p0=%d p1=%d p2=%d p3=%d, "
-		         "playerType: p0=%d p1=%d p2=%d p3=%d, teams: p0=%d p1=%d p2=%d p3=%d, isTeams=%d",
-		         onlineMatchBlock[0x62], onlineMatchBlock[0x62 + 0x24],
-		         onlineMatchBlock[0x62 + 2*0x24], onlineMatchBlock[0x62 + 3*0x24],
-		         onlineMatchBlock[0x61], onlineMatchBlock[0x61 + 0x24],
-		         onlineMatchBlock[0x61 + 2*0x24], onlineMatchBlock[0x61 + 3*0x24],
-		         onlineMatchBlock[0x69], onlineMatchBlock[0x69 + 0x24],
-		         onlineMatchBlock[0x69 + 2*0x24], onlineMatchBlock[0x69 + 3*0x24],
-		         onlineMatchBlock[0x8]);
+		fprintf(stderr, "[ROTATION] matchBlock - stocks: p0=%d p1=%d p2=%d p3=%d, "
+		        "playerType: p0=%d p1=%d p2=%d p3=%d, teams: p0=%d p1=%d p2=%d p3=%d, isTeams=%d\n",
+		        onlineMatchBlock[0x62], onlineMatchBlock[0x62 + 0x24],
+		        onlineMatchBlock[0x62 + 2*0x24], onlineMatchBlock[0x62 + 3*0x24],
+		        onlineMatchBlock[0x61], onlineMatchBlock[0x61 + 0x24],
+		        onlineMatchBlock[0x61 + 2*0x24], onlineMatchBlock[0x61 + 3*0x24],
+		        onlineMatchBlock[0x69], onlineMatchBlock[0x69 + 0x24],
+		        onlineMatchBlock[0x69 + 2*0x24], onlineMatchBlock[0x69 + 3*0x24],
+		        onlineMatchBlock[0x8]);
 	}
 
 	// Add rng offset to output
@@ -3130,14 +3130,14 @@ void CEXISlippi::advanceRotation(s8 winnerIdx, s8 lrasInitiator)
 			else
 			{
 				// LRAS initiator is a spectator, no rotation
-				INFO_LOG(SLIPPI_ONLINE, "Rotation: LRAS by spectator, no rotation");
+				fprintf(stderr, "[ROTATION] LRAS by spectator, no rotation\n");
 				return;
 			}
 		}
 		else
 		{
 			// No winner and no LRAS initiator — keep same matchup
-			INFO_LOG(SLIPPI_ONLINE, "Rotation: no winner, keeping same matchup");
+			fprintf(stderr, "[ROTATION] no winner, keeping same matchup\n");
 			return;
 		}
 	}
@@ -3162,10 +3162,10 @@ void CEXISlippi::advanceRotation(s8 winnerIdx, s8 lrasInitiator)
 
 	rotationState.gamesPlayed++;
 
-	INFO_LOG(SLIPPI_ONLINE, "Rotation advanced: active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d",
-	         rotationState.activePlayers[0], rotationState.activePlayers[1],
-	         rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
-	         rotationState.gamesPlayed);
+	fprintf(stderr, "[ROTATION] Advanced: active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d\n",
+	        rotationState.activePlayers[0], rotationState.activePlayers[1],
+	        rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
+	        rotationState.gamesPlayed);
 }
 
 void CEXISlippi::prepareNewSeed()
@@ -3516,6 +3516,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 			if (isRotationMode() && rotationGameActive)
 			{
 				rotationGameActive = false;
+				fprintf(stderr, "[ROTATION] CMD_RECEIVE_GAME_END fired, advancing rotation\n");
 
 				// Payload: [cmd(1)] [endMethod(1)] [lrasInitiator(1)] [placements(4)]
 				u8 *gameEndPayload = &memPtr[bufLoc];
@@ -3560,6 +3561,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 						}
 					}
 				}
+				fprintf(stderr, "[ROTATION] Selections reset after game end\n");
 			}
 			break;
 		case CMD_PREPARE_REPLAY:
