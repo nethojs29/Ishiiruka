@@ -2750,6 +2750,9 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	// Add alt stage mode to output
 	m_read_queue.push_back(static_cast<u8>(alt_stage_mode));
+
+	// Add search online mode so ASM can read the authoritative mode from C++
+	m_read_queue.push_back(static_cast<u8>(lastSearch.mode));
 }
 
 u16 CEXISlippi::getRandomStage()
@@ -2797,9 +2800,10 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 
 	if (isRotationMode())
 	{
-		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d, gamesPlayed=%d\n",
+		u8 asmOnlineMode = payload[7];
+		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d, gamesPlayed=%d, asmMode=%d\n",
 		        s.isCharacterSelected, s.isStageSelected, stageSelectOption, s.stageId, s.teamId,
-		        rotationState.gamesPlayed);
+		        rotationState.gamesPlayed, asmOnlineMode);
 	}
 
 	s.rngOffset = generator() % 0xFFFF;
