@@ -3515,6 +3515,24 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 				}
 
 				advanceRotation(winnerIdx, lrasInit);
+
+				// Reset selections so all players must re-pick on CSS.
+				// Without this, stale selections from the previous game cause
+				// prepareOnlineMatchState to think everyone is ready immediately.
+				localSelections.Reset();
+				stagePool.clear();
+				if (slippi_netplay)
+				{
+					auto matchInfo = slippi_netplay->GetMatchInfo();
+					if (matchInfo)
+					{
+						for (int i = 0; i < SLIPPI_REMOTE_PLAYER_MAX; i++)
+						{
+							matchInfo->remotePlayerSelections[i].isCharacterSelected = false;
+							matchInfo->remotePlayerSelections[i].isStageSelected = false;
+						}
+					}
+				}
 			}
 			break;
 		case CMD_PREPARE_REPLAY:
