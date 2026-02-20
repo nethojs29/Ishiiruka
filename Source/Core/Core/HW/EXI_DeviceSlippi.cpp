@@ -2067,14 +2067,20 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	if (isRotationMode())
 	{
+		static u8 prevLocalReady = 255;
+		static int prevMmState = -1;
 		static int logThrottle = 0;
-		if (logThrottle++ % 60 == 0) // Log once per second
+		bool stateChanged = (localPlayerReady != prevLocalReady || (int)mmState != prevMmState);
+		if (stateChanged || logThrottle++ % 60 == 0) // Log on state change or once per second
 		{
 			fprintf(stderr, "[ROTATION] prepareMatchState: localReady=%d, mmState=%d, "
-			        "localCharSel=%d, localStageSel=%d, gamesPlayed=%d\n",
+			        "localCharSel=%d, localStageSel=%d, gamesPlayed=%d%s\n",
 			        localPlayerReady, (int)mmState,
 			        localSelections.isCharacterSelected, localSelections.isStageSelected,
-			        rotationState.gamesPlayed);
+			        rotationState.gamesPlayed,
+			        stateChanged ? " [STATE CHANGED]" : "");
+			prevLocalReady = localPlayerReady;
+			prevMmState = (int)mmState;
 		}
 	}
 
@@ -2141,15 +2147,19 @@ void CEXISlippi::prepareOnlineMatchState()
 
 			if (isRotationMode())
 			{
+				static u8 prevRemoteReady = 255;
 				static int logThrottle2 = 0;
-				if (logThrottle2++ % 60 == 0)
+				bool remoteChanged = (remotePlayersReady != prevRemoteReady);
+				if (remoteChanged || logThrottle2++ % 60 == 0)
 				{
 					fprintf(stderr, "[ROTATION] remoteReady=%d, remoteCount=%d, "
-					        "r0char=%d r1char=%d r2char=%d\n",
+					        "r0char=%d r1char=%d r2char=%d%s\n",
 					        remotePlayersReady, remotePlayerCount,
 					        matchInfo->remotePlayerSelections[0].isCharacterSelected,
 					        matchInfo->remotePlayerSelections[1].isCharacterSelected,
-					        matchInfo->remotePlayerSelections[2].isCharacterSelected);
+					        matchInfo->remotePlayerSelections[2].isCharacterSelected,
+					        remoteChanged ? " [REMOTE CHANGED]" : "");
+					prevRemoteReady = remotePlayersReady;
 				}
 			}
 
@@ -2785,10 +2795,22 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 	INFO_LOG(SLIPPI, "LPS set char: %d, iSS: %d, %d, stage: %d, alt stage: %d, team: %d", s.isCharacterSelected,
 	         stageSelectOption, s.isStageSelected, s.stageId, s.alt_stage_mode, s.teamId);
 
+	if (isRotationMode())
+	{
+		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d\n",
+		        s.isCharacterSelected, s.isStageSelected, stageSelectOption, s.stageId, s.teamId);
+	}
+
 	s.rngOffset = generator() % 0xFFFF;
 
 	// Merge these selections
 	localSelections.Merge(s);
+
+	if (isRotationMode())
+	{
+		fprintf(stderr, "[ROTATION] afterMerge: localCharSel=%d, localStageSel=%d\n",
+		        localSelections.isCharacterSelected, localSelections.isStageSelected);
+	}
 
 	if (slippi_netplay)
 	{
