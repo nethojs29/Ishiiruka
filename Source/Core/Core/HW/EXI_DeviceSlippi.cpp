@@ -2797,8 +2797,9 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 
 	if (isRotationMode())
 	{
-		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d\n",
-		        s.isCharacterSelected, s.isStageSelected, stageSelectOption, s.stageId, s.teamId);
+		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d, gamesPlayed=%d\n",
+		        s.isCharacterSelected, s.isStageSelected, stageSelectOption, s.stageId, s.teamId,
+		        rotationState.gamesPlayed);
 	}
 
 	s.rngOffset = generator() % 0xFFFF;
