@@ -2501,7 +2501,7 @@ void CEXISlippi::prepareOnlineMatchState()
 		// Handle Singles/Teams/Rotation specific logic
 		if (isRotationMode())
 		{
-			onlineMatchBlock[0x8] = 1; // is Teams = true (for spectator camera)
+			onlineMatchBlock[0x8] = 0; // is Teams = false (clean 1v1)
 
 			// Configure active vs spectating players
 			for (int i = 0; i < 2; i++)
@@ -2509,15 +2509,17 @@ void CEXISlippi::prepareOnlineMatchState()
 				u8 activeIdx = rotationState.activePlayers[i];
 				u8 spectatorIdx = rotationState.waitingPlayers[i];
 
-				// Active player: human, 4 stocks, team i
-				onlineMatchBlock[0x61 + activeIdx * 0x24] = 0;   // playerType = human
-				onlineMatchBlock[0x62 + activeIdx * 0x24] = 4;   // stocks
-				onlineMatchBlock[0x69 + activeIdx * 0x24] = i;   // teamId (0 or 1)
+				// Active player: human, 4 stocks
+				onlineMatchBlock[0x61 + activeIdx * 0x24] = 0; // playerType = human
+				onlineMatchBlock[0x62 + activeIdx * 0x24] = 4; // stocks
 
-				// Spectator: not present (type 3 = None)
-				onlineMatchBlock[0x61 + spectatorIdx * 0x24] = 3; // playerType = none
-				onlineMatchBlock[0x62 + spectatorIdx * 0x24] = 0; // stocks = 0
-				onlineMatchBlock[0x69 + spectatorIdx * 0x24] = i; // same team
+				// Spectator: clear slot completely so no garbage is read
+				onlineMatchBlock[0x60 + spectatorIdx * 0x24] = 0x19; // charId = none
+				onlineMatchBlock[0x61 + spectatorIdx * 0x24] = 3;    // playerType = none
+				onlineMatchBlock[0x62 + spectatorIdx * 0x24] = 0;    // stocks = 0
+				onlineMatchBlock[0x63 + spectatorIdx * 0x24] = 0;    // charColor = 0
+				onlineMatchBlock[0x67 + spectatorIdx * 0x24] = 0;    // shade = 0
+				onlineMatchBlock[0x69 + spectatorIdx * 0x24] = 0;    // teamId = 0
 			}
 
 			rotationGameActive = true;
