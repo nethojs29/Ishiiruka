@@ -2064,7 +2064,20 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	u8 localPlayerReady = localSelections.isCharacterSelected;
 
-	// In rotation mode, spectators are auto-ready — they don't need to pick a character
+	// In rotation mode, spectators are auto-ready — they don't need to pick a character.
+	// Also auto-send their selections over the network so remote clients see them as ready.
+	if (isSpectatorPort(localPlayerIndex) && !localSelections.isCharacterSelected)
+	{
+		localSelections.isCharacterSelected = true;
+		localSelections.isStageSelected = true;
+		localSelections.stageId = getRandomStage();
+		if (slippi_netplay)
+		{
+			slippi_netplay->SetMatchSelections(localSelections);
+			fprintf(stderr, "[ROTATION] Local player (port %d) is spectating — auto-ready sent\n",
+			        localPlayerIndex);
+		}
+	}
 	if (isSpectatorPort(localPlayerIndex))
 		localPlayerReady = 1;
 
@@ -3615,18 +3628,6 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 					}
 				}
 				fprintf(stderr, "[ROTATION] Selections reset after game end\n");
-
-				// Auto-ready the local player if they're now spectating
-				// so they don't block the next match from starting
-				if (isSpectatorPort(localPlayerIndex) && slippi_netplay)
-				{
-					localSelections.isCharacterSelected = true;
-					localSelections.isStageSelected = true;
-					localSelections.stageId = getRandomStage();
-					slippi_netplay->SetMatchSelections(localSelections);
-					fprintf(stderr, "[ROTATION] Local player (port %d) is spectating — auto-ready sent\n",
-					        localPlayerIndex);
-				}
 			}
 			break;
 		case CMD_PREPARE_REPLAY:
