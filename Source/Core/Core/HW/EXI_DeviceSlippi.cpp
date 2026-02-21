@@ -2539,13 +2539,17 @@ void CEXISlippi::prepareOnlineMatchState()
 		}
 
 		// Group players into left/right side for team splash screen display
+		// ASM word format (big-endian lwz): [port2, port1, port0, count]
+		// ASM extracts count from LSB, then shifts right 8 and masks for each port.
+		// So port0 must be at vector index 2 (byte 1 in word), port1 at index 1, etc.
 		if (isRotationMode())
 		{
 			// Only show the two active players on the splash screen
+			// Pack single port at index 2 so ASM reads it correctly
 			u8 a0 = rotationState.activePlayers[0];
 			u8 a1 = rotationState.activePlayers[1];
-			leftTeamPlayers.push_back(a0);
-			rightTeamPlayers.push_back(a1);
+			leftTeamPlayers = {0, 0, a0, 1};
+			rightTeamPlayers = {0, 0, a1, 1};
 		}
 		else
 		{
@@ -2557,13 +2561,13 @@ void CEXISlippi::prepareOnlineMatchState()
 				else
 					rightTeamPlayers.push_back(i);
 			}
+			int leftTeamSize = leftTeamPlayers.size();
+			int rightTeamSize = rightTeamPlayers.size();
+			leftTeamPlayers.resize(4, 0);
+			rightTeamPlayers.resize(4, 0);
+			leftTeamPlayers[3] = leftTeamSize;
+			rightTeamPlayers[3] = rightTeamSize;
 		}
-		int leftTeamSize = leftTeamPlayers.size();
-		int rightTeamSize = rightTeamPlayers.size();
-		leftTeamPlayers.resize(4, 0);
-		rightTeamPlayers.resize(4, 0);
-		leftTeamPlayers[3] = leftTeamSize;
-		rightTeamPlayers[3] = rightTeamSize;
 
 		// Handle desync recovery. The default values in desync_recovery.state are 480 seconds (8 min timer) and
 		// 4-stock/0 percent damage for the fighters. That means if we are not in a desync recovery state, the
