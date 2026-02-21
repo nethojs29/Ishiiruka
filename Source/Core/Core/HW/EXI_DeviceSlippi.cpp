@@ -2539,13 +2539,24 @@ void CEXISlippi::prepareOnlineMatchState()
 		}
 
 		// Group players into left/right side for team splash screen display
-		for (int i = 0; i < 4; i++)
+		if (isRotationMode())
 		{
-			int teamId = onlineMatchBlock[0x69 + i * 0x24];
-			if (teamId == lps.teamId)
-				leftTeamPlayers.push_back(i);
-			else
-				rightTeamPlayers.push_back(i);
+			// Only show the two active players on the splash screen
+			u8 a0 = rotationState.activePlayers[0];
+			u8 a1 = rotationState.activePlayers[1];
+			leftTeamPlayers.push_back(a0);
+			rightTeamPlayers.push_back(a1);
+		}
+		else
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				int teamId = onlineMatchBlock[0x69 + i * 0x24];
+				if (teamId == lps.teamId)
+					leftTeamPlayers.push_back(i);
+				else
+					rightTeamPlayers.push_back(i);
+			}
 		}
 		int leftTeamSize = leftTeamPlayers.size();
 		int rightTeamSize = rightTeamPlayers.size();
@@ -2650,27 +2661,12 @@ void CEXISlippi::prepareOnlineMatchState()
 	std::string oppText = "";
 	if (isRotationMode())
 	{
-		// In rotation mode, show matchup info:
-		// - If local player is active: "OPP|N:NEXT"
-		// - If local player is spectating: "NAME vs NAME"
+		// In rotation mode, always show the current matchup as "Name vs Name"
 		u8 a0 = rotationState.activePlayers[0];
 		u8 a1 = rotationState.activePlayers[1];
-		u8 nextUp = rotationState.waitingPlayers[0];
-		bool localIsActive = (localPlayerIndex == a0 || localPlayerIndex == a1);
-
-		if (localIsActive)
-		{
-			u8 otherActive = (localPlayerIndex == a0) ? a1 : a0;
-			auto oppPlayerName = matchmaking->GetPlayerName(otherActive);
-			auto nextPlayerName = matchmaking->GetPlayerName(nextUp);
-			oppText = TruncateLengthChar(oppPlayerName, 6) + "|N:" + TruncateLengthChar(nextPlayerName, 5);
-		}
-		else
-		{
-			auto name0 = matchmaking->GetPlayerName(a0);
-			auto name1 = matchmaking->GetPlayerName(a1);
-			oppText = TruncateLengthChar(name0, 5) + " vs " + TruncateLengthChar(name1, 5);
-		}
+		auto name0 = matchmaking->GetPlayerName(a0);
+		auto name1 = matchmaking->GetPlayerName(a1);
+		oppText = TruncateLengthChar(name0, 5) + " vs " + TruncateLengthChar(name1, 5);
 	}
 	else
 	{
