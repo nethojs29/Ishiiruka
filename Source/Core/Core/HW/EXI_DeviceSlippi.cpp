@@ -1848,7 +1848,7 @@ void CEXISlippi::startFindMatch(u8 *payload)
 	// Reset rotation state on new search
 	if (search.mode == SlippiMatchmaking::ROTATION)
 	{
-		resetRotationState();
+		ResetRotationState();
 	}
 
 	// While we do have another condition that checks characters after being connected, it's nice to give
@@ -2064,9 +2064,9 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	u8 localPlayerReady = localSelections.isCharacterSelected;
 
-	// In rotation mode, spectators are auto-ready — they don't need to pick a character.
+	// In rotation mode, spectators are auto-ready - they don't need to pick a character.
 	// Also auto-send their selections over the network so remote clients see them as ready.
-	if (isSpectatorPort(localPlayerIndex) && !localSelections.isCharacterSelected)
+	if (IsSpectatorPort(localPlayerIndex) && !localSelections.isCharacterSelected)
 	{
 		localSelections.isCharacterSelected = true;
 		localSelections.isStageSelected = true;
@@ -2074,33 +2074,12 @@ void CEXISlippi::prepareOnlineMatchState()
 		if (slippi_netplay)
 		{
 			slippi_netplay->SetMatchSelections(localSelections);
-			fprintf(stderr, "[ROTATION] Local player (port %d) is spectating — auto-ready sent\n",
-			        localPlayerIndex);
+			INFO_LOG(SLIPPI_ONLINE, "Rotation: local player (port %d) is spectating, auto-ready sent",
+			         localPlayerIndex);
 		}
 	}
-	if (isSpectatorPort(localPlayerIndex))
+	if (IsSpectatorPort(localPlayerIndex))
 		localPlayerReady = 1;
-
-	u8 remotePlayersReady = 0;
-
-	if (isRotationMode())
-	{
-		static u8 prevLocalReady = 255;
-		static int prevMmState = -1;
-		static int logThrottle = 0;
-		bool stateChanged = (localPlayerReady != prevLocalReady || (int)mmState != prevMmState);
-		if (stateChanged || logThrottle++ % 60 == 0) // Log on state change or once per second
-		{
-			fprintf(stderr, "[ROTATION] prepareMatchState: localReady=%d, mmState=%d, "
-			        "localCharSel=%d, localStageSel=%d, gamesPlayed=%d%s\n",
-			        localPlayerReady, (int)mmState,
-			        localSelections.isCharacterSelected, localSelections.isStageSelected,
-			        rotationState.gamesPlayed,
-			        stateChanged ? " [STATE CHANGED]" : "");
-			prevLocalReady = localPlayerReady;
-			prevMmState = (int)mmState;
-		}
-	}
 
 	auto userInfo = user->GetUserInfo();
 	u16 alt_stage_mode = 0;
@@ -2143,12 +2122,12 @@ void CEXISlippi::prepareOnlineMatchState()
 
 			// If we're a spectator on initial connection, auto-ready so we don't
 			// block the active players from starting
-			if (isSpectatorPort(localPlayerIndex))
+			if (IsSpectatorPort(localPlayerIndex))
 			{
 				localSelections.isCharacterSelected = true;
 				localSelections.isStageSelected = true;
-				fprintf(stderr, "[ROTATION] Local player (port %d) is spectating on connect — auto-ready\n",
-				        localPlayerIndex);
+				INFO_LOG(SLIPPI_ONLINE, "Rotation: local player (port %d) is spectating on connect, auto-ready",
+				         localPlayerIndex);
 			}
 
 			slippi_netplay->SetMatchSelections(localSelections);
@@ -2168,31 +2147,13 @@ void CEXISlippi::prepareOnlineMatchState()
 			u8 remotePlayerCount = matchmaking->RemotePlayerCount();
 			for (int i = 0; i < remotePlayerCount; i++)
 			{
-				// In rotation mode, spectators are auto-ready — skip their check
-				if (isSpectatorPort(matchInfo->remotePlayerSelections[i].playerIdx))
+				// In rotation mode, spectators are auto-ready - skip their check
+				if (IsSpectatorPort(matchInfo->remotePlayerSelections[i].playerIdx))
 					continue;
 
 				if (!matchInfo->remotePlayerSelections[i].isCharacterSelected)
 				{
 					remotePlayersReady = 0;
-				}
-			}
-
-			if (isRotationMode())
-			{
-				static u8 prevRemoteReady = 255;
-				static int logThrottle2 = 0;
-				bool remoteChanged = (remotePlayersReady != prevRemoteReady);
-				if (remoteChanged || logThrottle2++ % 60 == 0)
-				{
-					fprintf(stderr, "[ROTATION] remoteReady=%d, remoteCount=%d, "
-					        "r0char=%d r1char=%d r2char=%d%s\n",
-					        remotePlayersReady, remotePlayerCount,
-					        matchInfo->remotePlayerSelections[0].isCharacterSelected,
-					        matchInfo->remotePlayerSelections[1].isCharacterSelected,
-					        matchInfo->remotePlayerSelections[2].isCharacterSelected,
-					        remoteChanged ? " [REMOTE CHANGED]" : "");
-					prevRemoteReady = remotePlayersReady;
 				}
 			}
 
@@ -2314,8 +2275,8 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	if (localPlayerReady && remotePlayersReady)
 	{
-		fprintf(stderr, "[ROTATION] Match prep: lastSearch.mode=%d, isRotation=%d\n",
-		        (int)lastSearch.mode, isRotationMode() ? 1 : 0);
+		INFO_LOG(SLIPPI_ONLINE, "Match prep: lastSearch.mode=%d, isRotation=%d",
+		         (int)lastSearch.mode, IsRotationMode() ? 1 : 0);
 		auto isDecider = slippi_netplay->IsDecider();
 		u8 remotePlayerCount = matchmaking->RemotePlayerCount();
 		auto matchInfo = slippi_netplay->GetMatchInfo();
@@ -2499,35 +2460,35 @@ void CEXISlippi::prepareOnlineMatchState()
 		}
 
 		// Handle Singles/Teams/Rotation specific logic
-		if (isRotationMode())
+		if (IsRotationMode())
 		{
 			onlineMatchBlock[0x8] = 0; // is Teams = false (clean 1v1)
 
 			// Configure active vs spectating players
 			for (int i = 0; i < 2; i++)
 			{
-				u8 activeIdx = rotationState.activePlayers[i];
-				u8 spectatorIdx = rotationState.waitingPlayers[i];
+				u8 active_idx = rotation_state.active_players[i];
+				u8 spectator_idx = rotation_state.waiting_players[i];
 
 				// Active player: human, 4 stocks
-				onlineMatchBlock[0x61 + activeIdx * 0x24] = 0; // playerType = human
-				onlineMatchBlock[0x62 + activeIdx * 0x24] = 4; // stocks
+				onlineMatchBlock[0x61 + active_idx * 0x24] = 0; // playerType = human
+				onlineMatchBlock[0x62 + active_idx * 0x24] = 4; // stocks
 
 				// Spectator: clear slot completely so no garbage is read
-				onlineMatchBlock[0x60 + spectatorIdx * 0x24] = 0x19; // charId = none
-				onlineMatchBlock[0x61 + spectatorIdx * 0x24] = 3;    // playerType = none
-				onlineMatchBlock[0x62 + spectatorIdx * 0x24] = 0;    // stocks = 0
-				onlineMatchBlock[0x63 + spectatorIdx * 0x24] = 0;    // charColor = 0
-				onlineMatchBlock[0x67 + spectatorIdx * 0x24] = 0;    // shade = 0
-				onlineMatchBlock[0x69 + spectatorIdx * 0x24] = 0;    // teamId = 0
+				onlineMatchBlock[0x60 + spectator_idx * 0x24] = 0x19; // charId = none
+				onlineMatchBlock[0x61 + spectator_idx * 0x24] = 3;    // playerType = none
+				onlineMatchBlock[0x62 + spectator_idx * 0x24] = 0;    // stocks = 0
+				onlineMatchBlock[0x63 + spectator_idx * 0x24] = 0;    // charColor = 0
+				onlineMatchBlock[0x67 + spectator_idx * 0x24] = 0;    // shade = 0
+				onlineMatchBlock[0x69 + spectator_idx * 0x24] = 0;    // teamId = 0
 			}
 
-			rotationGameActive = true;
+			rotation_game_active = true;
 
-			fprintf(stderr, "[ROTATION] active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d\n",
-			        rotationState.activePlayers[0], rotationState.activePlayers[1],
-			        rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
-			        rotationState.gamesPlayed);
+			INFO_LOG(SLIPPI_ONLINE, "Rotation: active=[%d,%d] waiting=[%d,%d] games_played=%d",
+			         rotation_state.active_players[0], rotation_state.active_players[1],
+			         rotation_state.waiting_players[0], rotation_state.waiting_players[1],
+			         rotation_state.games_played);
 		}
 		else if (remotePlayerCount <= 2)
 		{
@@ -2577,12 +2538,12 @@ void CEXISlippi::prepareOnlineMatchState()
 		// ASM word format (big-endian lwz): [port2, port1, port0, count]
 		// ASM extracts count from LSB, then shifts right 8 and masks for each port.
 		// So port0 must be at vector index 2 (byte 1 in word), port1 at index 1, etc.
-		if (isRotationMode())
+		if (IsRotationMode())
 		{
 			// Only show the two active players on the splash screen
 			// Pack single port at index 2 so ASM reads it correctly
-			u8 a0 = rotationState.activePlayers[0];
-			u8 a1 = rotationState.activePlayers[1];
+			u8 a0 = rotation_state.active_players[0];
+			u8 a1 = rotation_state.active_players[1];
 			leftTeamPlayers = {0, 0, a0, 1};
 			rightTeamPlayers = {0, 0, a1, 1};
 		}
@@ -2613,11 +2574,11 @@ void CEXISlippi::prepareOnlineMatchState()
 		for (int i = 0; i < 4; i++)
 		{
 			// In rotation mode, don't restore stocks for spectating players (they must stay at 0)
-			if (isRotationMode())
+			if (IsRotationMode())
 			{
-				bool isSpectator = (i == rotationState.waitingPlayers[0] ||
-				                    i == rotationState.waitingPlayers[1]);
-				if (isSpectator)
+				bool is_spectator = (i == rotation_state.waiting_players[0] ||
+				                     i == rotation_state.waiting_players[1]);
+				if (is_spectator)
 					continue;
 			}
 
@@ -2628,18 +2589,7 @@ void CEXISlippi::prepareOnlineMatchState()
 		}
 	}
 
-	if (isRotationMode())
-	{
-		fprintf(stderr, "[ROTATION] matchBlock - stocks: p0=%d p1=%d p2=%d p3=%d, "
-		        "playerType: p0=%d p1=%d p2=%d p3=%d, teams: p0=%d p1=%d p2=%d p3=%d, isTeams=%d\n",
-		        onlineMatchBlock[0x62], onlineMatchBlock[0x62 + 0x24],
-		        onlineMatchBlock[0x62 + 2*0x24], onlineMatchBlock[0x62 + 3*0x24],
-		        onlineMatchBlock[0x61], onlineMatchBlock[0x61 + 0x24],
-		        onlineMatchBlock[0x61 + 2*0x24], onlineMatchBlock[0x61 + 3*0x24],
-		        onlineMatchBlock[0x69], onlineMatchBlock[0x69 + 0x24],
-		        onlineMatchBlock[0x69 + 2*0x24], onlineMatchBlock[0x69 + 3*0x24],
-		        onlineMatchBlock[0x8]);
-	}
+
 
 	// Add rng offset to output
 	appendWordToBuffer(&m_read_queue, rngOffset);
@@ -2698,11 +2648,11 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	// Create the opponent string using the names of all players on opposing teams
 	std::string oppText = "";
-	if (isRotationMode())
+	if (IsRotationMode())
 	{
 		// In rotation mode, always show the current matchup as "Name vs Name"
-		u8 a0 = rotationState.activePlayers[0];
-		u8 a1 = rotationState.activePlayers[1];
+		u8 a0 = rotation_state.active_players[0];
+		u8 a1 = rotation_state.active_players[1];
 		auto name0 = matchmaking->GetPlayerName(a0);
 		auto name1 = matchmaking->GetPlayerName(a1);
 		oppText = TruncateLengthChar(name0, 5) + " vs " + TruncateLengthChar(name1, 5);
@@ -2833,24 +2783,10 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 	INFO_LOG(SLIPPI, "LPS set char: %d, iSS: %d, %d, stage: %d, alt stage: %d, team: %d", s.isCharacterSelected,
 	         stageSelectOption, s.isStageSelected, s.stageId, s.alt_stage_mode, s.teamId);
 
-	if (isRotationMode())
-	{
-		u8 asmOnlineMode = payload[7];
-		fprintf(stderr, "[ROTATION] setMatchSelections: charSel=%d, stageSel=%d, stageOpt=%d, stage=%d, team=%d, gamesPlayed=%d, asmMode=%d\n",
-		        s.isCharacterSelected, s.isStageSelected, stageSelectOption, s.stageId, s.teamId,
-		        rotationState.gamesPlayed, asmOnlineMode);
-	}
-
 	s.rngOffset = generator() % 0xFFFF;
 
 	// Merge these selections
 	localSelections.Merge(s);
-
-	if (isRotationMode())
-	{
-		fprintf(stderr, "[ROTATION] afterMerge: localCharSel=%d, localStageSel=%d\n",
-		        localSelections.isCharacterSelected, localSelections.isStageSelected);
-	}
 
 	if (slippi_netplay)
 	{
@@ -3151,7 +3087,7 @@ void CEXISlippi::handleConnectionCleanup()
 	// Reset any selection overwrites
 	overwrite_selections.clear();
 
-	// Note: rotation state is NOT reset here — it persists across games in a session.
+	// Note: rotation state is NOT reset here - it persists across games in a session.
 	// It is only reset in startFindMatch() when a new search begins.
 
 	// Reset play session
@@ -3164,76 +3100,76 @@ void CEXISlippi::handleConnectionCleanup()
 	ERROR_LOG(SLIPPI_ONLINE, "Connection cleanup completed...");
 }
 
-bool CEXISlippi::isRotationMode() const
+bool CEXISlippi::IsRotationMode() const
 {
 	return lastSearch.mode == SlippiMatchmaking::OnlinePlayMode::ROTATION;
 }
 
-bool CEXISlippi::isSpectatorPort(u8 port) const
+bool CEXISlippi::IsSpectatorPort(u8 port) const
 {
-	return isRotationMode() &&
-	       (port == rotationState.waitingPlayers[0] || port == rotationState.waitingPlayers[1]);
+	return IsRotationMode() &&
+	       (port == rotation_state.waiting_players[0] || port == rotation_state.waiting_players[1]);
 }
 
-void CEXISlippi::resetRotationState()
+void CEXISlippi::ResetRotationState()
 {
-	rotationState = RotationState();
-	rotationGameActive = false;
+	rotation_state = RotationState();
+	rotation_game_active = false;
 }
 
-void CEXISlippi::advanceRotation(s8 winnerIdx, s8 lrasInitiator)
+void CEXISlippi::AdvanceRotation(s8 winner_idx, s8 lras_initiator)
 {
-	// winnerIdx maps to team: team 0 = activePlayers[0], team 1 = activePlayers[1]
-	// If winnerIdx is -1 (no contest / LRAS), use lrasInitiator to determine loser.
+	// winner_idx maps to team: team 0 = active_players[0], team 1 = active_players[1]
+	// If winner_idx is -1 (no contest / LRAS), use lras_initiator to determine loser.
 	// If both are -1 (timeout/draw), keep same matchup (no rotation).
-	if (winnerIdx < 0)
+	if (winner_idx < 0)
 	{
-		if (lrasInitiator >= 0)
+		if (lras_initiator >= 0)
 		{
 			// The LRAS initiator is the loser. Determine which active player they are.
-			if (lrasInitiator == rotationState.activePlayers[0])
-				winnerIdx = 1; // activePlayers[1] wins
-			else if (lrasInitiator == rotationState.activePlayers[1])
-				winnerIdx = 0; // activePlayers[0] wins
+			if (lras_initiator == rotation_state.active_players[0])
+				winner_idx = 1; // active_players[1] wins
+			else if (lras_initiator == rotation_state.active_players[1])
+				winner_idx = 0; // active_players[0] wins
 			else
 			{
 				// LRAS initiator is a spectator, no rotation
-				fprintf(stderr, "[ROTATION] LRAS by spectator, no rotation\n");
+				INFO_LOG(SLIPPI_ONLINE, "Rotation: LRAS by spectator, no rotation");
 				return;
 			}
 		}
 		else
 		{
-			// No winner and no LRAS initiator — keep same matchup
-			fprintf(stderr, "[ROTATION] no winner, keeping same matchup\n");
+			// No winner and no LRAS initiator - keep same matchup
+			INFO_LOG(SLIPPI_ONLINE, "Rotation: no winner, keeping same matchup");
 			return;
 		}
 	}
 
-	u8 winnerPort = rotationState.activePlayers[0];
-	u8 loserPort = rotationState.activePlayers[1];
+	u8 winner_port = rotation_state.active_players[0];
+	u8 loser_port = rotation_state.active_players[1];
 
-	if (winnerIdx == 1)
+	if (winner_idx == 1)
 	{
-		winnerPort = rotationState.activePlayers[1];
-		loserPort = rotationState.activePlayers[0];
+		winner_port = rotation_state.active_players[1];
+		loser_port = rotation_state.active_players[0];
 	}
 
 	// Next waiting player comes in, loser goes to back of waiting queue
-	u8 nextPlayer = rotationState.waitingPlayers[0];
-	u8 remainingWaiter = rotationState.waitingPlayers[1];
+	u8 next_player = rotation_state.waiting_players[0];
+	u8 remaining_waiter = rotation_state.waiting_players[1];
 
-	rotationState.activePlayers[0] = winnerPort;
-	rotationState.activePlayers[1] = nextPlayer;
-	rotationState.waitingPlayers[0] = remainingWaiter;
-	rotationState.waitingPlayers[1] = loserPort;
+	rotation_state.active_players[0] = winner_port;
+	rotation_state.active_players[1] = next_player;
+	rotation_state.waiting_players[0] = remaining_waiter;
+	rotation_state.waiting_players[1] = loser_port;
 
-	rotationState.gamesPlayed++;
+	rotation_state.games_played++;
 
-	fprintf(stderr, "[ROTATION] Advanced: active=[%d,%d] waiting=[%d,%d] gamesPlayed=%d\n",
-	        rotationState.activePlayers[0], rotationState.activePlayers[1],
-	        rotationState.waitingPlayers[0], rotationState.waitingPlayers[1],
-	        rotationState.gamesPlayed);
+	INFO_LOG(SLIPPI_ONLINE, "Rotation advanced: active=[%d,%d] waiting=[%d,%d] games_played=%d",
+	         rotation_state.active_players[0], rotation_state.active_players[1],
+	         rotation_state.waiting_players[0], rotation_state.waiting_players[1],
+	         rotation_state.games_played);
 }
 
 void CEXISlippi::prepareNewSeed()
@@ -3581,36 +3517,36 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 			slprs_exi_device_reporter_push_replay_data(slprs_exi_device_ptr, &memPtr[bufLoc], payloadLen + 1);
 
 			// Advance rotation on game end using placement data from the recording system
-			if (isRotationMode() && rotationGameActive)
+			if (IsRotationMode() && rotation_game_active)
 			{
-				rotationGameActive = false;
-				fprintf(stderr, "[ROTATION] CMD_RECEIVE_GAME_END fired, advancing rotation\n");
+				rotation_game_active = false;
+				INFO_LOG(SLIPPI_ONLINE, "Rotation: CMD_RECEIVE_GAME_END fired, advancing rotation");
 
-				// Payload: [cmd(1)] [endMethod(1)] [lrasInitiator(1)] [placements(4)]
-				u8 *gameEndPayload = &memPtr[bufLoc];
-				s8 lrasInit = (s8)gameEndPayload[2];
+				// Payload: [cmd(1)] [endMethod(1)] [lras_initiator(1)] [placements(4)]
+				u8 *game_end_payload = &memPtr[bufLoc];
+				s8 lras_init = (s8)game_end_payload[2];
 				// placements[i] = finishing position for port i (0 = 1st place)
 				// Determine winner: the active player with the better (lower) placement wins
-				u8 p0 = rotationState.activePlayers[0];
-				u8 p1 = rotationState.activePlayers[1];
-				s8 placement0 = (s8)gameEndPayload[3 + p0];
-				s8 placement1 = (s8)gameEndPayload[3 + p1];
+				u8 p0 = rotation_state.active_players[0];
+				u8 p1 = rotation_state.active_players[1];
+				s8 placement0 = (s8)game_end_payload[3 + p0];
+				s8 placement1 = (s8)game_end_payload[3 + p1];
 
-				s8 winnerIdx = -1;
+				s8 winner_idx = -1;
 				if (placement0 >= 0 && placement1 >= 0)
 				{
-					winnerIdx = (placement0 < placement1) ? 0 : 1;
+					winner_idx = (placement0 < placement1) ? 0 : 1;
 				}
 				else if (placement0 >= 0)
 				{
-					winnerIdx = 0;
+					winner_idx = 0;
 				}
 				else if (placement1 >= 0)
 				{
-					winnerIdx = 1;
+					winner_idx = 1;
 				}
 
-				advanceRotation(winnerIdx, lrasInit);
+				AdvanceRotation(winner_idx, lras_init);
 
 				// Reset selections so all players must re-pick on CSS.
 				// Without this, stale selections from the previous game cause
@@ -3629,7 +3565,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 						}
 					}
 				}
-				fprintf(stderr, "[ROTATION] Selections reset after game end\n");
+				INFO_LOG(SLIPPI_ONLINE, "Rotation: selections reset after game end");
 			}
 			break;
 		case CMD_PREPARE_REPLAY:
