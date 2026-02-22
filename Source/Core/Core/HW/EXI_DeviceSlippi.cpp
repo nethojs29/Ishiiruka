@@ -2081,6 +2081,8 @@ void CEXISlippi::prepareOnlineMatchState()
 	if (IsSpectatorPort(localPlayerIndex))
 		localPlayerReady = 1;
 
+	u8 remotePlayersReady = 0;
+
 	auto userInfo = user->GetUserInfo();
 	u16 alt_stage_mode = 0;
 
@@ -2738,6 +2740,10 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	// Add search online mode so ASM can read the authoritative mode from C++
 	m_read_queue.push_back(static_cast<u8>(lastSearch.mode));
+
+	// Add spectator flag for rotation mode CSS text
+	u8 is_spectator = IsSpectatorPort(localPlayerIndex) ? 1 : 0;
+	m_read_queue.push_back(is_spectator);
 }
 
 u16 CEXISlippi::getRandomStage()
