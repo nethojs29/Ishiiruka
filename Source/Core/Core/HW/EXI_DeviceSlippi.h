@@ -307,18 +307,19 @@ class CEXISlippi : public IEXIDevice
 	struct RotationState
 	{
 		// Which 2 of the 4 player indices are currently fighting
-		u8 activePlayers[2] = {0, 1};
-		// Which 2 are spectating (waiting queue — front of queue plays next)
-		u8 waitingPlayers[2] = {2, 3};
+		u8 active_players[2] = {0, 1};
+		// Which 2 are spectating (waiting queue - front of queue plays next)
+		u8 waiting_players[2] = {2, 3};
 		// Number of games played in this rotation session
-		u32 gamesPlayed = 0;
+		u32 games_played = 0;
 	};
 
-	RotationState rotationState;
-	bool rotationGameActive = false; // true while a rotation game is in progress
-	bool isRotationMode() const;
-	void advanceRotation(s8 winnerIdx, s8 lrasInitiator);
-	void resetRotationState();
+	RotationState rotation_state;
+	bool rotation_game_active = false; // true while a rotation game is in progress
+	bool IsRotationMode() const;
+	bool IsSpectatorPort(u8 port) const;
+	void AdvanceRotation(s8 winner_idx, s8 lras_initiator);
+	void ResetRotationState();
 
 	std::vector<u8> m_read_queue;
 	std::unique_ptr<Slippi::SlippiGame> m_current_game = nullptr;
