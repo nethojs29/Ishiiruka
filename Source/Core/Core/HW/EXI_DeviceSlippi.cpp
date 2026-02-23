@@ -2466,17 +2466,18 @@ void CEXISlippi::prepareOnlineMatchState()
 		{
 			onlineMatchBlock[0x8] = 0; // is Teams = false (clean 1v1)
 
-			// Configure active vs spectating players
+			// Configure active players: human, 4 stocks
 			for (int i = 0; i < 2; i++)
 			{
 				u8 active_idx = rotation_state.active_players[i];
-				u8 spectator_idx = rotation_state.waiting_players[i];
-
-				// Active player: human, 4 stocks
 				onlineMatchBlock[0x61 + active_idx * 0x24] = 0; // playerType = human
 				onlineMatchBlock[0x62 + active_idx * 0x24] = 4; // stocks
+			}
 
-				// Spectator: clear slot completely so no garbage is read
+			// Configure spectating players: clear all waiting slots
+			for (size_t i = 0; i < rotation_state.waiting_players.size(); i++)
+			{
+				u8 spectator_idx = rotation_state.waiting_players[i];
 				onlineMatchBlock[0x60 + spectator_idx * 0x24] = 0x19; // charId = none
 				onlineMatchBlock[0x61 + spectator_idx * 0x24] = 3;    // playerType = none
 				onlineMatchBlock[0x62 + spectator_idx * 0x24] = 0;    // stocks = 0
@@ -2487,10 +2488,18 @@ void CEXISlippi::prepareOnlineMatchState()
 
 			rotation_game_active = true;
 
-			INFO_LOG(SLIPPI_ONLINE, "Rotation: active=[%d,%d] waiting=[%d,%d] games_played=%d",
-			         rotation_state.active_players[0], rotation_state.active_players[1],
-			         rotation_state.waiting_players[0], rotation_state.waiting_players[1],
-			         rotation_state.games_played);
+			{
+				std::string ws;
+				for (size_t wi = 0; wi < rotation_state.waiting_players.size(); wi++)
+				{
+					if (wi > 0)
+						ws += ",";
+					ws += std::to_string(rotation_state.waiting_players[wi]);
+				}
+				INFO_LOG(SLIPPI_ONLINE, "Rotation: active=[%d,%d] waiting=[%s] games_played=%d",
+				         rotation_state.active_players[0], rotation_state.active_players[1],
+				         ws.c_str(), rotation_state.games_played);
+			}
 		}
 		else if (remotePlayerCount <= 2)
 		{
@@ -2576,13 +2585,8 @@ void CEXISlippi::prepareOnlineMatchState()
 		for (int i = 0; i < 4; i++)
 		{
 			// In rotation mode, don't restore stocks for spectating players (they must stay at 0)
-			if (IsRotationMode())
-			{
-				bool is_spectator = (i == rotation_state.waiting_players[0] ||
-				                     i == rotation_state.waiting_players[1]);
-				if (is_spectator)
-					continue;
-			}
+			if (IsRotationMode() && IsSpectatorPort(i))
+				continue;
 
 			onlineMatchBlock[0x62 + i * 0x24] = desync_recovery.state.fighters[i].stocks_remaining;
 
@@ -2744,6 +2748,23 @@ void CEXISlippi::prepareOnlineMatchState()
 	// Add spectator flag for rotation mode CSS text
 	u8 is_spectator = IsSpectatorPort(localPlayerIndex) ? 1 : 0;
 	m_read_queue.push_back(is_spectator);
+
+	// Rotation lobby state — dynamic player count
+	m_read_queue.push_back(IsRotationMode() ? rotation_state.player_count : 0);
+	m_read_queue.push_back(IsRotationMode() ? rotation_state.active_players[0] : 0);
+	m_read_queue.push_back(IsRotationMode() ? rotation_state.active_players[1] : 0);
+
+	// Waiting queue (8 slots, pad with 0xFF)
+	for (int i = 0; i < 8; i++)
+	{
+		if (IsRotationMode() && i < (int)rotation_state.waiting_players.size())
+			m_read_queue.push_back(rotation_state.waiting_players[i]);
+		else
+			m_read_queue.push_back(0xFF);
+	}
+
+	m_read_queue.push_back(IsRotationMode() ? (u8)(rotation_state.games_played & 0xFF) : 0);
+	m_read_queue.push_back(IsRotationMode() ? rotation_state.last_winner : 0xFF);
 }
 
 u16 CEXISlippi::getRandomStage()
@@ -3113,8 +3134,15 @@ bool CEXISlippi::IsRotationMode() const
 
 bool CEXISlippi::IsSpectatorPort(u8 port) const
 {
-	return IsRotationMode() &&
-	       (port == rotation_state.waiting_players[0] || port == rotation_state.waiting_players[1]);
+	if (!IsRotationMode())
+		return false;
+
+	for (u8 wp : rotation_state.waiting_players)
+	{
+		if (port == wp)
+			return true;
+	}
+	return false;
 }
 
 void CEXISlippi::ResetRotationState()
@@ -3161,21 +3189,31 @@ void CEXISlippi::AdvanceRotation(s8 winner_idx, s8 lras_initiator)
 		loser_port = rotation_state.active_players[0];
 	}
 
+	// Store last winner
+	rotation_state.last_winner = winner_port;
+
 	// Next waiting player comes in, loser goes to back of waiting queue
 	u8 next_player = rotation_state.waiting_players[0];
-	u8 remaining_waiter = rotation_state.waiting_players[1];
 
 	rotation_state.active_players[0] = winner_port;
 	rotation_state.active_players[1] = next_player;
-	rotation_state.waiting_players[0] = remaining_waiter;
-	rotation_state.waiting_players[1] = loser_port;
+
+	// Remove front of queue, push loser to back
+	rotation_state.waiting_players.erase(rotation_state.waiting_players.begin());
+	rotation_state.waiting_players.push_back(loser_port);
 
 	rotation_state.games_played++;
 
-	INFO_LOG(SLIPPI_ONLINE, "Rotation advanced: active=[%d,%d] waiting=[%d,%d] games_played=%d",
+	std::string waiting_str;
+	for (size_t i = 0; i < rotation_state.waiting_players.size(); i++)
+	{
+		if (i > 0)
+			waiting_str += ",";
+		waiting_str += std::to_string(rotation_state.waiting_players[i]);
+	}
+	INFO_LOG(SLIPPI_ONLINE, "Rotation advanced: active=[%d,%d] waiting=[%s] games_played=%d",
 	         rotation_state.active_players[0], rotation_state.active_players[1],
-	         rotation_state.waiting_players[0], rotation_state.waiting_players[1],
-	         rotation_state.games_played);
+	         waiting_str.c_str(), rotation_state.games_played);
 }
 
 void CEXISlippi::prepareNewSeed()

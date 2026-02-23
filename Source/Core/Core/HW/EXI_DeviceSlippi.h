@@ -306,12 +306,16 @@ class CEXISlippi : public IEXIDevice
 	// Rotation mode state
 	struct RotationState
 	{
-		// Which 2 of the 4 player indices are currently fighting
+		// Which 2 player indices are currently fighting
 		u8 active_players[2] = {0, 1};
-		// Which 2 are spectating (waiting queue - front of queue plays next)
-		u8 waiting_players[2] = {2, 3};
+		// Waiting queue - ordered by position (front plays next)
+		std::vector<u8> waiting_players = {2, 3};
+		// Total connected players
+		u8 player_count = 4;
 		// Number of games played in this rotation session
 		u32 games_played = 0;
+		// Port of last game's winner (0xFF = none/first game)
+		u8 last_winner = 0xFF;
 	};
 
 	RotationState rotation_state;
