@@ -48,7 +48,7 @@
 #define SLEEP_TIME_MS 8
 #define WRITE_FILE_SLEEP_TIME_MS 85
 
-// #define LOCAL_TESTING
+#define LOCAL_TESTING
 // #define CREATE_DIFF_FILES
 
 static std::unordered_map<u8, std::string> slippi_names;
@@ -2210,6 +2210,15 @@ void CEXISlippi::prepareOnlineMatchState()
 	oppName = p2Name = "Player 2";
 	p1Rank = 8;
 	p2Rank = 15;
+
+	// Fake rotation state for local testing
+	lastSearch.mode = SlippiMatchmaking::OnlinePlayMode::ROTATION;
+	rotation_state.player_count = 4;
+	rotation_state.active_players[0] = 0;
+	rotation_state.active_players[1] = 1;
+	rotation_state.waiting_players = {2, 3};
+	rotation_state.games_played = 2;
+	rotation_state.last_winner = 0;
 #endif
 
 	SlippiDesyncRecoveryResp desync_recovery;
@@ -2743,6 +2752,8 @@ void CEXISlippi::prepareOnlineMatchState()
 	m_read_queue.push_back(static_cast<u8>(alt_stage_mode));
 
 	// Add search online mode so ASM can read the authoritative mode from C++
+	INFO_LOG(SLIPPI_ONLINE, "MSRB push: lastSearch.mode=%d (ROTATION=%d)", (int)lastSearch.mode,
+	         (int)SlippiMatchmaking::OnlinePlayMode::ROTATION);
 	m_read_queue.push_back(static_cast<u8>(lastSearch.mode));
 
 	// Add spectator flag for rotation mode CSS text
@@ -3129,7 +3140,11 @@ void CEXISlippi::handleConnectionCleanup()
 
 bool CEXISlippi::IsRotationMode() const
 {
+#ifdef LOCAL_TESTING
+	return true; // Force rotation mode for local testing
+#else
 	return lastSearch.mode == SlippiMatchmaking::OnlinePlayMode::ROTATION;
+#endif
 }
 
 bool CEXISlippi::IsSpectatorPort(u8 port) const
@@ -3372,7 +3387,9 @@ void CEXISlippi::prepareGamePrepOppStep(const SlippiExiTypes::GpFetchStepQuery &
 	if (delay_count >= 90)
 	{
 		resp.is_found = true;
-		resp.is_skip = true; // Will make client just pick the next available options
+		resp.is_skip = false;
+		resp.char_selection = 0x09;    // Marth
+		resp.char_color_selection = 0; // Default costume
 
 		delay_count = 0;
 	}
