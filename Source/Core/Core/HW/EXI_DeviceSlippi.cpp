@@ -2058,6 +2058,7 @@ void CEXISlippi::prepareOnlineMatchState()
 		mmState = SlippiMatchmaking::ProcessState::CONNECTION_SUCCESS;
 		isLocalConnected = true;
 	}
+	lastSearch.mode = SlippiMatchmaking::OnlinePlayMode::ROTATION;
 #endif
 
 	m_read_queue.push_back(mmState); // Matchmaking State
@@ -2282,7 +2283,8 @@ void CEXISlippi::prepareOnlineMatchState()
 	std::vector<u8> leftTeamPlayers = {};
 	std::vector<u8> rightTeamPlayers = {};
 
-	// NOTICE_LOG(SLIPPI_ONLINE, "%d, %d", localPlayerReady, remotePlayersReady);
+	ERROR_LOG(SLIPPI_ONLINE, "prepareOnlineMatchState: localReady=%d, remoteReady=%d, isCharSel=%d",
+	          localPlayerReady, remotePlayersReady, (int)localSelections.isCharacterSelected);
 
 	if (localPlayerReady && remotePlayersReady)
 	{
@@ -2461,7 +2463,7 @@ void CEXISlippi::prepareOnlineMatchState()
 				teamId = teamAssignments[s->playerIdx];
 			}
 
-			// ERROR_LOG(SLIPPI_ONLINE, "idx: %d, char: %d, team: %d", s->playerIdx, s->characterId, teamId);
+			ERROR_LOG(SLIPPI_ONLINE, "idx: %d, char: %d, color: %d, team: %d", s->playerIdx, s->characterId, s->characterColor, teamId);
 
 			// Overwrite player character
 			onlineMatchBlock[0x60 + (s->playerIdx) * 0x24] = s->characterId;
@@ -2639,6 +2641,10 @@ void CEXISlippi::prepareOnlineMatchState()
 	// Add player groupings for VS splash screen
 	leftTeamPlayers.resize(4, 0);
 	rightTeamPlayers.resize(4, 0);
+	ERROR_LOG(SLIPPI_ONLINE, "matchBlock: P0char=%d P1char=%d | leftTeam=[%d,%d,%d,%d] rightTeam=[%d,%d,%d,%d]",
+	          onlineMatchBlock[0x60], onlineMatchBlock[0x60 + 0x24],
+	          leftTeamPlayers[0], leftTeamPlayers[1], leftTeamPlayers[2], leftTeamPlayers[3],
+	          rightTeamPlayers[0], rightTeamPlayers[1], rightTeamPlayers[2], rightTeamPlayers[3]);
 	m_read_queue.insert(m_read_queue.end(), leftTeamPlayers.begin(), leftTeamPlayers.end());
 	m_read_queue.insert(m_read_queue.end(), rightTeamPlayers.begin(), rightTeamPlayers.end());
 
