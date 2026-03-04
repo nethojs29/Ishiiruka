@@ -2377,6 +2377,8 @@ void CEXISlippi::prepareOnlineMatchState()
 			orderedSelections[ow.playerIdx]->characterId = ow.characterId;
 			orderedSelections[ow.playerIdx]->characterColor = ow.characterColor;
 			orderedSelections[ow.playerIdx]->stageId = ow.stageId;
+			orderedSelections[ow.playerIdx]->isCharacterSelected = ow.isCharacterSelected;
+			orderedSelections[ow.playerIdx]->isStageSelected = ow.isStageSelected;
 		}
 
 		// Overwrite stage information. Make sure everyone loads the same stage
@@ -3758,6 +3760,27 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 							matchInfo->remotePlayerSelections[i].isCharacterSelected = false;
 							matchInfo->remotePlayerSelections[i].isStageSelected = false;
 						}
+
+						// Pre-mark spectator ports as ready so active players don't
+						// have to wait for spectators to re-send auto-ready over netplay.
+						for (int i = 0; i < SLIPPI_REMOTE_PLAYER_MAX; i++)
+						{
+							u8 rIdx = matchInfo->remotePlayerSelections[i].playerIdx;
+							if (IsSpectatorPort(rIdx))
+							{
+								matchInfo->remotePlayerSelections[i].isCharacterSelected = true;
+								matchInfo->remotePlayerSelections[i].isStageSelected = true;
+							}
+						}
+					}
+
+					// Also auto-ready local player if they are now a spectator
+					if (IsSpectatorPort(localPlayerIndex))
+					{
+						localSelections.isCharacterSelected = true;
+						localSelections.isStageSelected = true;
+						localSelections.stageId = getRandomStage();
+						slippi_netplay->SetMatchSelections(localSelections);
 					}
 				}
 				INFO_LOG(SLIPPI_ONLINE, "Rotation: selections reset after game end");
