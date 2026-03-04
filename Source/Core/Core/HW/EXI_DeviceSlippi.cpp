@@ -2369,14 +2369,14 @@ void CEXISlippi::prepareOnlineMatchState()
 			orderedSelections[rps[i].playerIdx] = &rps[i];
 		}
 
-		// Overwrite selections
+		// Overwrite selections — use playerIdx (not loop index) to target the correct slot
 		for (int i = 0; i < overwrite_selections.size(); i++)
 		{
 			const auto &ow = overwrite_selections[i];
 
-			orderedSelections[i]->characterId = ow.characterId;
-			orderedSelections[i]->characterColor = ow.characterColor;
-			orderedSelections[i]->stageId = ow.stageId;
+			orderedSelections[ow.playerIdx]->characterId = ow.characterId;
+			orderedSelections[ow.playerIdx]->characterColor = ow.characterColor;
+			orderedSelections[ow.playerIdx]->stageId = ow.stageId;
 		}
 
 		// Overwrite stage information. Make sure everyone loads the same stage
@@ -3522,6 +3522,21 @@ void CEXISlippi::handleRotSetSitout(const SlippiExiTypes::RotSetSitoutQuery &que
 
 void CEXISlippi::prepareRotGetSitout()
 {
+	// Drain any pending remote sit-out updates from the netplay queue.
+	// prepareOnlineMatchState (which normally drains this) doesn't run during
+	// the rotation lobby scene, so we must drain here to keep flags current.
+	if (slippi_netplay)
+	{
+		SlippiRotSitoutUpdate update;
+		while (slippi_netplay->GetRotSitoutUpdate(update))
+		{
+			if (update.is_sitout)
+				rotation_state.sitout_flags |= (1 << update.port);
+			else
+				rotation_state.sitout_flags &= ~(1 << update.port);
+		}
+	}
+
 	m_read_queue.clear();
 	m_read_queue.push_back(rotation_state.sitout_flags);
 }
