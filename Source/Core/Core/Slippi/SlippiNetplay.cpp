@@ -518,6 +518,15 @@ unsigned int SlippiNetplayClient::OnData(sf::Packet &packet, ENetPeer *peer)
 	}
 	break;
 
+	case NP_MSG_SLIPPI_ROT_SITOUT:
+	{
+		SlippiRotSitoutUpdate update;
+		packet >> update.port;
+		packet >> update.is_sitout;
+		rotSitoutQueue.push_back(update);
+	}
+	break;
+
 	default:
 		WARN_LOG(SLIPPI_ONLINE, "Unknown message received with id : %d", mid);
 		break;
@@ -1211,6 +1220,15 @@ void SlippiNetplayClient::SendGamePrepStep(SlippiGamePrepStepResults &s)
 	SendAsync(std::move(spac));
 }
 
+void SlippiNetplayClient::SendRotSitout(u8 port, u8 is_sitout)
+{
+	auto spac = std::make_unique<sf::Packet>();
+	*spac << static_cast<MessageId>(NP_MSG_SLIPPI_ROT_SITOUT);
+	*spac << port;
+	*spac << is_sitout;
+	SendAsync(std::move(spac));
+}
+
 void SlippiNetplayClient::SendSyncedGameState(SlippiSyncedGameState &s) {
 	//WARN_LOG(SLIPPI_ONLINE, "Sending synced state. %s, %d, %d, %d. F1: %d (%d%%), F2: %d (%d%%)",
 	//          s.match_id.c_str(), s.game_index, s.tiebreak_index, s.seconds_remaining,
@@ -1251,6 +1269,16 @@ bool SlippiNetplayClient::GetGamePrepResults(u8 stepIdx, SlippiGamePrepStepResul
 	}
 
 	return false;
+}
+
+bool SlippiNetplayClient::GetRotSitoutUpdate(SlippiRotSitoutUpdate &update)
+{
+	if (rotSitoutQueue.empty())
+		return false;
+
+	update = rotSitoutQueue.front();
+	rotSitoutQueue.pop_front();
+	return true;
 }
 
 SlippiPlayerSelections SlippiNetplayClient::GetSlippiRemoteChatMessage(bool isChatEnabled)

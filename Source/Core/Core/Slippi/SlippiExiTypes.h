@@ -108,6 +108,18 @@ struct ChangeMusicVolumeQuery
 	u8 volume;
 };
 
+struct RotSetSitoutQuery
+{
+	u8 command;
+	u8 player_port;
+	u8 is_sitout;
+};
+
+struct RotGetSitoutResponse
+{
+	u8 sitout_flags;
+};
+
 // Not sure if resetting is strictly needed, might be contained to the file
 #pragma pack()
 

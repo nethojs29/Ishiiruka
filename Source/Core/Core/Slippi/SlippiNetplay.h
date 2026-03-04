@@ -48,6 +48,12 @@ struct SlippiGamePrepStepResults
 	u8 stage_selections[2];
 };
 
+struct SlippiRotSitoutUpdate
+{
+	u8 port;
+	u8 is_sitout;
+};
+
 struct SlippiSyncedFighterState
 {
 	u8 stocks_remaining = 4;
@@ -178,8 +184,10 @@ class SlippiNetplayClient
 	void SendSlippiPad(std::unique_ptr<SlippiPad> pad);
 	void SetMatchSelections(SlippiPlayerSelections &s);
 	void SendGamePrepStep(SlippiGamePrepStepResults &s);
+	void SendRotSitout(u8 port, u8 is_sitout);
 	void SendSyncedGameState(SlippiSyncedGameState &s);
 	bool GetGamePrepResults(u8 stepIdx, SlippiGamePrepStepResults &res);
+	bool GetRotSitoutUpdate(SlippiRotSitoutUpdate &update);
 	std::unique_ptr<SlippiRemotePadOutput> GetFakePadOutput(int frame);
 	std::unique_ptr<SlippiRemotePadOutput> GetSlippiRemotePad(int index, int maxFrameCount);
 	void DropOldRemoteInputs(int32_t finalizedFrame);
@@ -253,6 +261,7 @@ class SlippiNetplayClient
 	SlippiSyncedGameState local_sync_state;
 
 	std::deque<SlippiGamePrepStepResults> gamePrepStepQueue;
+	std::deque<SlippiRotSitoutUpdate> rotSitoutQueue;
 
 	u64 pingUs[SLIPPI_REMOTE_PLAYER_MAX];
 	int32_t lastFrameAcked[SLIPPI_REMOTE_PLAYER_MAX];
