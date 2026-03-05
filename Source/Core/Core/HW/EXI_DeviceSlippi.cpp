@@ -2166,15 +2166,13 @@ void CEXISlippi::prepareOnlineMatchState()
 				remotePlayerIndex = isDecider ? 1 : 0;
 			}
 
-			// In rotation mode, force remote ready in two cases:
-			// 1. Active players have overwrite_selections from the lobby scene's
-			//    force_match_characters() — characters are already synced via game prep steps.
-			// 2. Spectators between games — they don't need remote selections to be ready,
-			//    they just spectate whatever the active players set up.
-			// CSS polling doesn't run during the rotation lobby scene, so remote players'
-			// CMD_SET_SELECTIONS may not have arrived yet, but we know everyone is synced.
+			// In rotation mode, active players use force_match_characters() which
+			// writes overwrite_selections via CMD_OVERWRITE_SELECTIONS. When those
+			// are present, we know characters are synced via game prep steps and
+			// can skip waiting for remote CMD_SET_SELECTIONS (which doesn't arrive
+			// because CSS polling doesn't run during the rotation lobby scene).
 			if (IsRotationMode() && rotation_state.games_played > 0 &&
-			    (!overwrite_selections.empty() || IsSpectatorPort(localPlayerIndex)))
+			    !overwrite_selections.empty())
 			{
 				remotePlayersReady = 1;
 			}
