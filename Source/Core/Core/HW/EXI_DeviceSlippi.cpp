@@ -2824,7 +2824,9 @@ void CEXISlippi::prepareOnlineMatchState()
 	m_read_queue.push_back(static_cast<u8>(lastSearch.mode));
 
 	// Add spectator flag for rotation mode CSS text
-	u8 is_spectator = IsSpectatorPort(localPlayerIndex) ? 1 : 0;
+	// Only set when actively connected — after disconnect, CSS should show idle state
+	u8 is_spectator = (mmState == SlippiMatchmaking::ProcessState::CONNECTION_SUCCESS &&
+	                    IsSpectatorPort(localPlayerIndex)) ? 1 : 0;
 	m_read_queue.push_back(is_spectator);
 
 	// Rotation lobby state — dynamic player count
