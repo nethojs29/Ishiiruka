@@ -2521,6 +2521,28 @@ void CEXISlippi::prepareOnlineMatchState()
 
 		}
 
+		// Save last character for all players in rotation mode.
+		// For spectators, only save when last_char is still 0xFF (first game from CSS).
+		// At that point orderedSelections has their real CSS pick, not the auto-ready default.
+		// After game end, localSelections.Reset() clears characterId to 0, so subsequent
+		// frames would save Falcon — the 0xFF guard prevents that.
+		// For active players, always save (their character comes from real selections).
+		if (IsRotationMode())
+		{
+			for (auto &s : orderedSelections)
+			{
+				if (s->isCharacterSelected && s->playerIdx < 4 && s->characterId < 26)
+				{
+					bool is_spec = IsSpectatorPort(s->playerIdx);
+					if (!is_spec || rotation_state.last_char[s->playerIdx] == 0xFF)
+					{
+						rotation_state.last_char[s->playerIdx] = s->characterId;
+						rotation_state.last_color[s->playerIdx] = s->characterColor;
+					}
+				}
+			}
+		}
+
 		// Handle Singles/Teams/Rotation specific logic
 		if (IsRotationMode())
 		{
@@ -2928,16 +2950,6 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 
 	// Merge these selections
 	localSelections.Merge(s);
-
-	// Save character for rotation mode so it persists through spectating.
-	// Only save when character was explicitly selected (not from spectator auto-ready
-	// which sets characterId=0). This captures the CSS pick on game 0.
-	if (IsRotationMode() && s.isCharacterSelected && s.characterId < 26 &&
-	    localPlayerIndex < 4 && rotation_state.last_char[localPlayerIndex] == 0xFF)
-	{
-		rotation_state.last_char[localPlayerIndex] = s.characterId;
-		rotation_state.last_color[localPlayerIndex] = s.characterColor;
-	}
 
 	if (slippi_netplay)
 	{
