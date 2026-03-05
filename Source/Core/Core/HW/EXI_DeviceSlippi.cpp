@@ -2528,18 +2528,12 @@ void CEXISlippi::prepareOnlineMatchState()
 			        rotation_state.games_played);
 			onlineMatchBlock[0x8] = 0; // is Teams = false (clean 1v1)
 
-			// Configure active players: human, 4 stocks, save last character
+			// Configure active players: human, 4 stocks
 			for (int i = 0; i < 2; i++)
 			{
 				u8 active_idx = rotation_state.active_players[i];
 				onlineMatchBlock[0x61 + active_idx * 0x24] = 0; // playerType = human
 				onlineMatchBlock[0x62 + active_idx * 0x24] = 4; // stocks
-				// Save character for this player so it persists through spectating
-				if (active_idx < 4)
-				{
-					rotation_state.last_char[active_idx] = onlineMatchBlock[0x60 + active_idx * 0x24];
-					rotation_state.last_color[active_idx] = onlineMatchBlock[0x63 + active_idx * 0x24];
-				}
 			}
 
 			// Configure spectating players: clear all waiting slots
@@ -2925,6 +2919,15 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 
 	// Merge these selections
 	localSelections.Merge(s);
+
+	// Save character for rotation mode so it persists through spectating
+	if (IsRotationMode() && s.isCharacterSelected && localPlayerIndex < 4)
+	{
+		rotation_state.last_char[localPlayerIndex] = s.characterId;
+		rotation_state.last_color[localPlayerIndex] = s.characterColor;
+		fprintf(stderr, "[RotLobby] CSS saved last_char[%d] = %d, last_color = %d\n",
+		        localPlayerIndex, s.characterId, s.characterColor);
+	}
 
 	if (slippi_netplay)
 	{
@@ -3489,6 +3492,15 @@ void CEXISlippi::handleOverwriteSelections(const SlippiExiTypes::OverwriteSelect
 		s.playerIdx = i;
 
 		overwrite_selections.push_back(s);
+
+		// Save character for rotation mode so it persists through spectating
+		if (IsRotationMode() && i < 4)
+		{
+			rotation_state.last_char[i] = query.chars[i].char_id;
+			rotation_state.last_color[i] = query.chars[i].char_color_id;
+			fprintf(stderr, "[RotLobby] Saved last_char[%d] = %d, last_color[%d] = %d\n",
+			        i, query.chars[i].char_id, i, query.chars[i].char_color_id);
+		}
 	}
 }
 
