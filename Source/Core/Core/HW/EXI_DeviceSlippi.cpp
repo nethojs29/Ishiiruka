@@ -2518,6 +2518,13 @@ void CEXISlippi::prepareOnlineMatchState()
 			onlineMatchBlock[0x63 + (s->playerIdx) * 0x24] = s->characterColor;
 			onlineMatchBlock[0x67 + (s->playerIdx) * 0x24] = 0;
 			onlineMatchBlock[0x69 + (s->playerIdx) * 0x24] = teamId;
+
+			// Save last character for rotation mode (persists through spectating)
+			if (IsRotationMode() && s->playerIdx < 4 && s->characterId < 26)
+			{
+				rotation_state.last_char[s->playerIdx] = s->characterId;
+				rotation_state.last_color[s->playerIdx] = s->characterColor;
+			}
 		}
 
 		// Handle Singles/Teams/Rotation specific logic
@@ -2865,6 +2872,14 @@ void CEXISlippi::prepareOnlineMatchState()
 	m_read_queue.push_back(IsRotationMode() ? rotation_state.sitout_flags : 0);
 
 	// Per-player last selected character (persists through spectating)
+	if (IsRotationMode())
+	{
+		ERROR_LOG(SLIPPI_ONLINE, "[RotLobby] MSRB last_chars: [%d/%d, %d/%d, %d/%d, %d/%d]",
+		        rotation_state.last_char[0], rotation_state.last_color[0],
+		        rotation_state.last_char[1], rotation_state.last_color[1],
+		        rotation_state.last_char[2], rotation_state.last_color[2],
+		        rotation_state.last_char[3], rotation_state.last_color[3]);
+	}
 	for (int i = 0; i < 4; i++)
 	{
 		m_read_queue.push_back(IsRotationMode() ? rotation_state.last_char[i] : 0xFF);
@@ -2920,13 +2935,15 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 	// Merge these selections
 	localSelections.Merge(s);
 
-	// Save character for rotation mode so it persists through spectating
-	if (IsRotationMode() && s.isCharacterSelected && localPlayerIndex < 4)
+	// Save character for rotation mode so it persists through spectating.
+	// Save whenever a valid character is set, not just when "selected" (locked in),
+	// because on CSS the character is chosen before isCharacterSelected is true.
+	if (IsRotationMode() && s.characterId < 26 && localPlayerIndex < 4)
 	{
 		rotation_state.last_char[localPlayerIndex] = s.characterId;
 		rotation_state.last_color[localPlayerIndex] = s.characterColor;
-		fprintf(stderr, "[RotLobby] CSS saved last_char[%d] = %d, last_color = %d\n",
-		        localPlayerIndex, s.characterId, s.characterColor);
+		ERROR_LOG(SLIPPI_ONLINE, "[RotLobby] CSS saved last_char[%d] = %d, last_color = %d (charSel=%d)",
+		        localPlayerIndex, s.characterId, s.characterColor, s.isCharacterSelected);
 	}
 
 	if (slippi_netplay)
@@ -3498,7 +3515,7 @@ void CEXISlippi::handleOverwriteSelections(const SlippiExiTypes::OverwriteSelect
 		{
 			rotation_state.last_char[i] = query.chars[i].char_id;
 			rotation_state.last_color[i] = query.chars[i].char_color_id;
-			fprintf(stderr, "[RotLobby] Saved last_char[%d] = %d, last_color[%d] = %d\n",
+			ERROR_LOG(SLIPPI_ONLINE, "[RotLobby] Saved last_char[%d] = %d, last_color[%d] = %d",
 			        i, query.chars[i].char_id, i, query.chars[i].char_color_id);
 		}
 	}
@@ -3799,6 +3816,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 
 				fprintf(stderr, "[RotLobby] Game end: p0=%d p1=%d lras=%d placement0=%d placement1=%d → winner_idx=%d\n",
 				        p0, p1, lras_init, placement0, placement1, winner_idx);
+
 				AdvanceRotation(winner_idx, lras_init);
 
 				// Reset selections so all players must re-pick on CSS.
