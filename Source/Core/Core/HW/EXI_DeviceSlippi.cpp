@@ -2519,12 +2519,6 @@ void CEXISlippi::prepareOnlineMatchState()
 			onlineMatchBlock[0x67 + (s->playerIdx) * 0x24] = 0;
 			onlineMatchBlock[0x69 + (s->playerIdx) * 0x24] = teamId;
 
-			// Save last character for rotation mode (persists through spectating)
-			if (IsRotationMode() && s->playerIdx < 4 && s->characterId < 26)
-			{
-				rotation_state.last_char[s->playerIdx] = s->characterId;
-				rotation_state.last_color[s->playerIdx] = s->characterColor;
-			}
 		}
 
 		// Handle Singles/Teams/Rotation specific logic
@@ -2936,14 +2930,13 @@ void CEXISlippi::setMatchSelections(u8 *payload)
 	localSelections.Merge(s);
 
 	// Save character for rotation mode so it persists through spectating.
-	// Save whenever a valid character is set, not just when "selected" (locked in),
-	// because on CSS the character is chosen before isCharacterSelected is true.
-	if (IsRotationMode() && s.characterId < 26 && localPlayerIndex < 4)
+	// Only save when character was explicitly selected (not from spectator auto-ready
+	// which sets characterId=0). This captures the CSS pick on game 0.
+	if (IsRotationMode() && s.isCharacterSelected && s.characterId < 26 &&
+	    localPlayerIndex < 4 && rotation_state.last_char[localPlayerIndex] == 0xFF)
 	{
 		rotation_state.last_char[localPlayerIndex] = s.characterId;
 		rotation_state.last_color[localPlayerIndex] = s.characterColor;
-		ERROR_LOG(SLIPPI_ONLINE, "[RotLobby] CSS saved last_char[%d] = %d, last_color = %d (charSel=%d)",
-		        localPlayerIndex, s.characterId, s.characterColor, s.isCharacterSelected);
 	}
 
 	if (slippi_netplay)
