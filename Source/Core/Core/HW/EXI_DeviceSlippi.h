@@ -93,6 +93,8 @@ class CEXISlippi : public IEXIDevice
 		CMD_REPORT_SET_COMPLETE = 0xC2,
 		CMD_GET_PLAYER_SETTINGS = 0xC3,
 		CMD_REPORT_MATCH_STATUS_UPDATE = 0xC4,
+		CMD_ROT_SET_SITOUT = 0xC5,
+		CMD_ROT_GET_SITOUT = 0xC6,
 
 		// Misc
 		CMD_LOG_MESSAGE = 0xD0,
@@ -179,6 +181,8 @@ class CEXISlippi : public IEXIDevice
 	    {CMD_REPORT_SET_COMPLETE, static_cast<u32>(sizeof(SlippiExiTypes::ReportSetCompletionQuery) - 1)},
 	    {CMD_GET_PLAYER_SETTINGS, 0},
 	    {CMD_REPORT_MATCH_STATUS_UPDATE, static_cast<u32>(sizeof(SlippiExiTypes::ReportMatchStatusUpdateQuery) - 1)},
+	    {CMD_ROT_SET_SITOUT, static_cast<u32>(sizeof(SlippiExiTypes::RotSetSitoutQuery) - 1)},
+	    {CMD_ROT_GET_SITOUT, 0},
 
 	    // Misc
 	    {CMD_LOG_MESSAGE, 0xFFFF}, // Variable size... will only work if by itself
@@ -262,6 +266,8 @@ class CEXISlippi : public IEXIDevice
 	void prepareGamePrepOppStep(const SlippiExiTypes::GpFetchStepQuery &query);
 	void handleCompleteSet(const SlippiExiTypes::ReportSetCompletionQuery &query);
 	void handleMatchStatusUpdate(const SlippiExiTypes::ReportMatchStatusUpdateQuery &query);
+	void handleRotSetSitout(const SlippiExiTypes::RotSetSitoutQuery &query);
+	void prepareRotGetSitout();
 	void handleGetPlayerSettings();
 	void handleGetRank();
 
@@ -306,12 +312,20 @@ class CEXISlippi : public IEXIDevice
 	// Rotation mode state
 	struct RotationState
 	{
-		// Which 2 of the 4 player indices are currently fighting
+		// Which 2 player indices are currently fighting
 		u8 active_players[2] = {0, 1};
-		// Which 2 are spectating (waiting queue - front of queue plays next)
-		u8 waiting_players[2] = {2, 3};
+		// Waiting queue - ordered by position (front plays next)
+		std::vector<u8> waiting_players = {2, 3};
+		// Total connected players
+		u8 player_count = 4;
 		// Number of games played in this rotation session
 		u32 games_played = 0;
+		// Port of last game's winner (0xFF = none/first game)
+		u8 last_winner = 0xFF;
+		u8 sitout_flags = 0; // bitmask, bit N = port N is sitting out
+		// Per-player last selected character (persists across games, survives spectating)
+		u8 last_char[4] = {0xFF, 0xFF, 0xFF, 0xFF};   // 0xFF = no selection yet
+		u8 last_color[4] = {0, 0, 0, 0};
 	};
 
 	RotationState rotation_state;
