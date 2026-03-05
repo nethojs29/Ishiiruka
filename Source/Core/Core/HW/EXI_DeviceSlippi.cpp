@@ -2149,11 +2149,21 @@ void CEXISlippi::prepareOnlineMatchState()
 			u8 remotePlayerCount = matchmaking->RemotePlayerCount();
 			for (int i = 0; i < remotePlayerCount; i++)
 			{
+				u8 rPlayerIdx = matchInfo->remotePlayerSelections[i].playerIdx;
+				bool rCharSel = matchInfo->remotePlayerSelections[i].isCharacterSelected;
+				bool rIsSpec = IsSpectatorPort(rPlayerIdx);
+
+				if (IsRotationMode())
+				{
+					fprintf(stderr, "[RotLobby] remote[%d] playerIdx=%d isCharSel=%d isSpec=%d\n",
+					        i, rPlayerIdx, rCharSel, rIsSpec);
+				}
+
 				// In rotation mode, spectators are auto-ready - skip their check
-				if (IsSpectatorPort(matchInfo->remotePlayerSelections[i].playerIdx))
+				if (rIsSpec)
 					continue;
 
-				if (!matchInfo->remotePlayerSelections[i].isCharacterSelected)
+				if (!rCharSel)
 				{
 					remotePlayersReady = 0;
 				}
@@ -2175,6 +2185,13 @@ void CEXISlippi::prepareOnlineMatchState()
 			    !overwrite_selections.empty())
 			{
 				remotePlayersReady = 1;
+			}
+
+			if (IsRotationMode())
+			{
+				fprintf(stderr, "[RotLobby] localIdx=%d localReady=%d remoteReady=%d overwrite_empty=%d games=%d\n",
+				        localPlayerIndex, localPlayerReady, remotePlayersReady,
+				        overwrite_selections.empty() ? 1 : 0, rotation_state.games_played);
 			}
 #endif
 		}
