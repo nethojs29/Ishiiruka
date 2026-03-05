@@ -2528,12 +2528,18 @@ void CEXISlippi::prepareOnlineMatchState()
 			        rotation_state.games_played);
 			onlineMatchBlock[0x8] = 0; // is Teams = false (clean 1v1)
 
-			// Configure active players: human, 4 stocks
+			// Configure active players: human, 4 stocks, save last character
 			for (int i = 0; i < 2; i++)
 			{
 				u8 active_idx = rotation_state.active_players[i];
 				onlineMatchBlock[0x61 + active_idx * 0x24] = 0; // playerType = human
 				onlineMatchBlock[0x62 + active_idx * 0x24] = 4; // stocks
+				// Save character for this player so it persists through spectating
+				if (active_idx < 4)
+				{
+					rotation_state.last_char[active_idx] = onlineMatchBlock[0x60 + active_idx * 0x24];
+					rotation_state.last_color[active_idx] = onlineMatchBlock[0x63 + active_idx * 0x24];
+				}
 			}
 
 			// Configure spectating players: clear all waiting slots
@@ -2863,6 +2869,13 @@ void CEXISlippi::prepareOnlineMatchState()
 
 	// Sit-out flags bitmask
 	m_read_queue.push_back(IsRotationMode() ? rotation_state.sitout_flags : 0);
+
+	// Per-player last selected character (persists through spectating)
+	for (int i = 0; i < 4; i++)
+	{
+		m_read_queue.push_back(IsRotationMode() ? rotation_state.last_char[i] : 0xFF);
+		m_read_queue.push_back(IsRotationMode() ? rotation_state.last_color[i] : 0);
+	}
 }
 
 u16 CEXISlippi::getRandomStage()

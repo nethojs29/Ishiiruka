@@ -323,6 +323,9 @@ class CEXISlippi : public IEXIDevice
 		// Port of last game's winner (0xFF = none/first game)
 		u8 last_winner = 0xFF;
 		u8 sitout_flags = 0; // bitmask, bit N = port N is sitting out
+		// Per-player last selected character (persists across games, survives spectating)
+		u8 last_char[4] = {0xFF, 0xFF, 0xFF, 0xFF};   // 0xFF = no selection yet
+		u8 last_color[4] = {0, 0, 0, 0};
 	};
 
 	RotationState rotation_state;
