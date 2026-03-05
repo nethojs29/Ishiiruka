@@ -2065,8 +2065,10 @@ void CEXISlippi::prepareOnlineMatchState()
 	u8 localPlayerReady = localSelections.isCharacterSelected;
 
 	// In rotation mode, spectators are auto-ready - they don't need to pick a character.
-	// Also auto-send their selections over the network so remote clients see them as ready.
-	if (IsSpectatorPort(localPlayerIndex) && !localSelections.isCharacterSelected)
+	// Only do this while connected — after disconnect, rotation_state is stale and
+	// auto-readying would make the CSS show "Searching" instead of idle state.
+	if (mmState == SlippiMatchmaking::ProcessState::CONNECTION_SUCCESS &&
+	    IsSpectatorPort(localPlayerIndex) && !localSelections.isCharacterSelected)
 	{
 		localSelections.isCharacterSelected = true;
 		localSelections.isStageSelected = true;
@@ -2078,7 +2080,8 @@ void CEXISlippi::prepareOnlineMatchState()
 			         localPlayerIndex);
 		}
 	}
-	if (IsSpectatorPort(localPlayerIndex))
+	if (mmState == SlippiMatchmaking::ProcessState::CONNECTION_SUCCESS &&
+	    IsSpectatorPort(localPlayerIndex))
 		localPlayerReady = 1;
 
 	u8 remotePlayersReady = 0;
